@@ -19,44 +19,41 @@ pub mod actions {
     }
     pub impl ActionsImpl of IActions {
         fn spawn(ref world: WorldState, player: ContractAddress) {
-            let position = Position { player: player, vec: Vec2 { x: 0, y: 0, }, };
-            world.positions.insert(1, NullableTrait::new(position));
+            let position = Position { player: player, vec: Vec2 { x: 10, y: 10, }, };
+            world.positions.insert(player.into(), NullableTrait::new(position));
             let moves = Moves {
-                player: player, remaining: 0, last_direction: Direction::None, can_move: false,
+                player: player, remaining: 100, last_direction: Direction::None, can_move: true,
             };
-            world.moves.insert(1, NullableTrait::new(moves.into()));
+            world.moves.insert(player.into(), NullableTrait::new(moves.into()));
         }
         fn move(ref world: WorldState, player: ContractAddress, direction: Direction) {
             let position = world.positions.get(player.into());
             let moves = world.moves.get(player.into());
-            if moves.remaining == 0 || moves.last_direction == direction {
+            if moves.remaining == 0 {
+                let moves = Moves {
+                    player: player, remaining: 0, last_direction: direction, can_move: false,
+                };
+                world.moves.insert(player.into(), NullableTrait::new(moves.into()));
                 return;
             }
-            let mut new_position = position;
-            world
-                .positions
-                .insert(
-                    player.into(),
-                    NullableTrait::new(
-                        Position {
-                            player: player,
-                            vec: Vec2 {
-                                x: new_position.vec.x
-                                    + match direction {
-                                        Direction::Left => 0,
-                                        Direction::Right => 1,
-                                        _ => 0,
-                                    },
-                                y: new_position.vec.y
-                                    + match direction {
-                                        Direction::Up => 1,
-                                        Direction::Down => 0,
-                                        _ => 0,
-                                    },
-                            },
-                        }
-                    )
-                );
+            let next_position = next_position(position.deref(), direction);
+            world.positions.insert(player.into(), NullableTrait::new(next_position));
+            let moves = Moves {
+                player: player, remaining: moves.remaining - 1, last_direction: direction, can_move: true,
+            };
+            world.moves.insert(player.into(), NullableTrait::new(moves.into()));
         }
     }
+
+    fn next_position(mut position: Position, direction: Direction) -> Position {
+        match direction {
+            Direction::None => { return position; },
+            Direction::Left => { position.vec.x -= 1; },
+            Direction::Right => { position.vec.x += 1; },
+            Direction::Up => { position.vec.y += 1; },
+            Direction::Down => { position.vec.y -= 1; },
+        };
+        position
+    }
 }
+
